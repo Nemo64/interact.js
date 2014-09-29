@@ -72,17 +72,6 @@
       return $focusParent.find('.' + MARKER_CLASSES.join('.'));
     };
 
-    /*var updateMarker = function ($focusParent) {
-      var $markedElements = $(markedElements);
-
-      $('.' + MARKER_CLASSES.join('.')).removeClass(MARKER_CLASSES.join(' '));
-      $markedElements.addClass(MARKER_CLASS.join(' '));
-      //$markerContainer.empty().append($markedElements.clone());
-      //$markerContainer.children().offset(function (index) {
-      //  return $markedElements.eq(index).offset();
-      //});
-    };*/
-
     var removeMarking = function ($elements) {
       $elements.removeClass(MARKER_CLASSES.join(' '));
     };
@@ -111,10 +100,34 @@
       } else {
         var $focusParent = getFocusParent($draggable);
         var $markedElements = getMarkedElements($focusParent);
-        $markedElements.removeClass(MARKER_CLASSES.join(' '));
+        $markedElements.not($draggable).removeClass(MARKER_CLASSES.join(' '));
         addMarking($draggable);
       }
 
+      evt.preventDefault();
+    });
+
+    $rootElement.on('mousedown.interact.marker', '.' + MARKER_CLASSES.join('.'), function (evt) {
+      if (evt.isDefaultPrevented()) {
+        return;
+      }
+
+      var $this = $(this);
+      var timeout = null;
+
+      var stopTimeout = function () {
+        clearTimeout(timeout);
+      };
+
+      timeout = setTimeout(function () {
+        var $focusParent = getFocusParent($(evt.target));
+        var $markedElements = getMarkedElements($focusParent);
+        $markedElements.not($this).removeClass(MARKER_CLASSES.join(' '));
+        $rootElement.off('.interact.marker.tmp', stopTimeout)
+      }, 600);
+
+      var events = 'mousedown.interact.marker.tmp dragstart.interact.marker.tmp';
+      $rootElement.one(events, stopTimeout);
     });
 
     $rootElement.on('mousedown.interact.marker', function (evt) {
@@ -261,6 +274,26 @@
         evt.preventDefault();
         $this.append(append);
       }
+    });
+
+    $rootElement.on('dragend.interact.dnd', '[draggable]', function (evt) {
+        var $this = $(this);
+        var $focusParent = getFocusParent($this);
+        var $markedElements = getMarkedElements($focusParent);
+      
+        $markedElements.each(function () {
+          var $markedElement = $(this);
+
+          var event = jQuery.Event('drag-cleanup');
+          $markedElement.trigger(event);
+          if (event.isDefaultPrevented()) {
+            return;
+          }
+
+          if (evt.dataTransfer.dropEffect === 'move') {
+            $markedElement.remove();
+          }
+        });
     });
   };
 
